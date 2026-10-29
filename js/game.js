@@ -34,9 +34,6 @@ let mute;
 /** @type {boolean} A flag indicating whether the game has started. */
 let gameStarted = false;
 
-/** @type {HTMLElement} The notice element to display messages. */
-let notice;
-
 /** @type {boolean} A flag indicating whether a dialogue is currently shown. */
 let dialogueActive = false;
 
@@ -105,7 +102,8 @@ if (localStorage.getItem('mute') === 'true') {
 function init() {
     canvas = document.getElementById('canvas');
     world = new World(canvas, keyboard);
-    resizeCanvas();
+    bindTouchControls();
+    showFullscreenButton();
 }
 
 /**
@@ -120,11 +118,17 @@ function startGame() {
     startIntro();
 }
 
+/** @type {number[]} Key codes the game uses; the page must not scroll or click buttons on them. */
+const GAME_KEY_CODES = [32, 37, 38, 39, 40, 68];
+
 /**
  * Event listener for key presses.
  * @param {Event} e The event object.
  */
 window.addEventListener('keydown', (e) => {
+    if (GAME_KEY_CODES.includes(e.keyCode)) {
+        e.preventDefault();
+    }
     if (dialogueActive) {
         if (e.keyCode === 32) {
             advanceDialogue();
@@ -181,37 +185,66 @@ window.addEventListener('keyup', (e) => {
 });
 
 /**
- * Event listener for touching the touch buttons.
+ * Connects every on-screen button with a data-key attribute to the keyboard state.
+ * Pointer events cover touch, pen and mouse; capturing the pointer keeps the key
+ * pressed while the finger slides slightly off the button.
  */
-document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('button-space').addEventListener('touchstart', function () {
-        keyboard.SPACE = true;
+function bindTouchControls() {
+    document.querySelectorAll('.touch-button[data-key]').forEach(button => {
+        let key = button.dataset.key;
+        button.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            button.setPointerCapture(e.pointerId);
+            pressTouchKey(button, key, true);
+        });
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+            button.addEventListener(type, () => pressTouchKey(button, key, false));
+        });
+        button.addEventListener('contextmenu', (e) => e.preventDefault());
     });
-    document.getElementById('button-space').addEventListener('touchend', function () {
-        keyboard.SPACE = false;
-    });
+}
 
-    document.getElementById('button-right').addEventListener('touchstart', function () {
-        keyboard.RIGHT = true;
-    });
-    document.getElementById('button-right').addEventListener('touchend', function () {
-        keyboard.RIGHT = false;
-    });
+/**
+ * Sets a key of the keyboard state from an on-screen button and shows the pressed state.
+ * During a dialogue a tap on the jump button continues the dialogue, like the space key.
+ * @param {HTMLElement} button - The on-screen button.
+ * @param {string} key - The Keyboard property, e.g. 'LEFT'.
+ * @param {boolean} pressed - Whether the button is held down.
+ */
+function pressTouchKey(button, key, pressed) {
+    button.classList.toggle('is-pressed', pressed);
+    if (dialogueActive) {
+        if (pressed && key === 'SPACE') {
+            advanceDialogue();
+        }
+        return;
+    }
+    keyboard[key] = pressed;
+}
 
-    document.getElementById('button-left').addEventListener('touchstart', function () {
-        keyboard.LEFT = true;
-    });
-    document.getElementById('button-left').addEventListener('touchend', function () {
-        keyboard.LEFT = false;
-    });
+/**
+ * Shows the fullscreen button only where the browser can put an element into fullscreen
+ * (iPhones, for example, cannot).
+ */
+function showFullscreenButton() {
+    let app = document.getElementById('app');
+    if (app.requestFullscreen || app.webkitRequestFullscreen) {
+        document.getElementById('fullscreenButton').classList.remove('d-none');
+    }
+}
 
-    document.getElementById('button-d').addEventListener('touchstart', function () {
-        keyboard.D = true;
-    });
-    document.getElementById('button-d').addEventListener('touchend', function () {
-        keyboard.D = false;
-    });
-});
+/**
+ * Enters or leaves fullscreen for the whole game, including the touch controls.
+ */
+function toggleFullscreen() {
+    let app = document.getElementById('app');
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+        (app.requestFullscreen || app.webkitRequestFullscreen).call(app);
+    }
+    document.activeElement.blur();
+}
 
 /**
  * Function to set an interval that can be stopped later.
@@ -361,6 +394,7 @@ function resetGame() {
  * Function to set or remove mute.
  */
 function manageAudio() {
+    document.activeElement.blur();
     if (!audioplaying) {
         noMute();
     }
@@ -457,106 +491,13 @@ function changeAudioFileAndFadeIn(audio, newPath, loop, duration) {
 }
 
 /**
- * Prevents the text in buttons with class 'buttonGame' from being selectable.
- */
-window.onload = function () {
-    var buttons = document.querySelectorAll('.buttonGame');
-    for (var i = 0; i < buttons.length; i++) {
-        buttons[i].addEventListener('mousedown', function (event) {
-            event.preventDefault();
-        });
-    }
-};
-
-/**
- * Displays a notice if the screen width is less or equal to 720px and hides it after 10 seconds.
- */
-function displayNotice() {
-    // Check if the screen width is less or equal to 720px
-    if (window.innerWidth <= 720) {
-
-        // Display the div element
-        notice.style.display = 'block';
-
-        // Hide the div element after 10 seconds
-        setTimeout(function () {
-            close();
-        }, 10000);
-    }
-}
-
-/**
- * Hides the notice div element.
- */
-function close() {
-    notice.style.display = 'none';
-}
-
-/**
- * Adjusts the size of the canvas wrapper based on the screen resolution.
- * Both the game canvas and the cutscene canvas fill this wrapper exactly.
- */
-function resizeCanvas() {
-    let layout = document.querySelector('.canvas-layout');
-    let ratio = 1080 / 720;
-    if (layout) {
-        setStyleBasedOnWindow(layout, ratio);
-    }
-}
-
-/**
- * Sets the wrapper's pixel size to fit the window while keeping the game's aspect ratio.
- *
- * @param {HTMLElement} el - The element to set the size on.
- * @param {number} ratio - The ratio of the width to the height.
- */
-function setStyleBasedOnWindow(el, ratio) {
-    let availableWidth = window.innerWidth;
-    let availableHeight = window.innerHeight;
-    if (isPortraitPhone()) {
-        let swap = availableWidth;
-        availableWidth = availableHeight;
-        availableHeight = swap;
-    }
-    let width, height;
-    if (availableWidth / availableHeight < ratio) {
-        width = availableWidth;
-        height = availableWidth / ratio;
-    } else {
-        height = availableHeight;
-        width = availableHeight * ratio;
-    }
-    el.style.width = width + 'px';
-    el.style.height = height + 'px';
-}
-
-/**
- * Checks if the game is running on a narrow, portrait-oriented screen.
- * @returns {boolean} - true if the game should be rotated to fit a phone in portrait mode.
- */
-function isPortraitPhone() {
-    return window.innerHeight > window.innerWidth && window.innerWidth <= 900;
-}
-
-/**
- * Calls resizeCanvas when the window size changes.
- */
-window.onresize = function () {
-    resizeCanvas();
-}
-
-/**
  * Adds or removes classes from the mute and sound buttons based on the mute state.
  */
-document.addEventListener('DOMContentLoaded', function () {
-    setButton();
-    // Prüfen, ob es sich um ein Touch-Gerät handelt
-    if (!('ontouchstart' in window)) {
-        let buttons = document.getElementById('buttons');
-        buttons.classList.add('d-none');
-    }
-});
+document.addEventListener('DOMContentLoaded', setButton);
 
+/**
+ * Shows the button that matches the current mute state.
+ */
 function setButton() {
     muteBtn = document.getElementById('mute');
     soundBtn = document.getElementById('no_mute');
