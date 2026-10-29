@@ -22,10 +22,10 @@ class BottleBar extends DrawableObject {
     constructor() {
         super();
         this.loadImages(this.IMAGES);
-        this.x = 375;
+        this.x = 290;
         this.y = 0;
-        this.width = 300;
-        this.height = 90;
+        this.width = 260;
+        this.height = 78;
         this.setPercentage(0);
     }
 

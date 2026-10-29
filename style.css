@@ -160,11 +160,10 @@ svg .stroke {
 
 /* Overlays inside the stage */
 
-/* Below the coin bar, which fills the top right corner of the canvas. */
 .toolbar {
     position: absolute;
-    top: 9cqw;
-    right: 2.5cqw;
+    top: 2cqw;
+    right: 2cqw;
     z-index: 3;
     display: flex;
     gap: 1.2cqw;
