@@ -34,6 +34,9 @@ let mute;
 /** @type {boolean} A flag indicating whether the game has started. */
 let gameStarted = false;
 
+/** @type {boolean} Whether the player clicked the play button; keys and touch buttons do nothing before. */
+let inputEnabled = false;
+
 /** @type {boolean} A flag indicating whether a dialogue is currently shown. */
 let dialogueActive = false;
 
@@ -111,6 +114,7 @@ function init() {
  */
 function startGame() {
     document.getElementById('startScreen').classList.add('d-none');
+    inputEnabled = true;
     if (!mute) {
         background_music.play().catch(() => {
         });
@@ -126,6 +130,9 @@ const GAME_KEY_CODES = [32, 37, 38, 39, 40, 68];
  * @param {Event} e The event object.
  */
 window.addEventListener('keydown', (e) => {
+    if (!inputEnabled) {
+        return;
+    }
     if (GAME_KEY_CODES.includes(e.keyCode)) {
         e.preventDefault();
     }
@@ -212,6 +219,9 @@ function bindTouchControls() {
  * @param {boolean} pressed - Whether the button is held down.
  */
 function pressTouchKey(button, key, pressed) {
+    if (!inputEnabled) {
+        return;
+    }
     button.classList.toggle('is-pressed', pressed);
     if (dialogueActive) {
         if (pressed && key === 'SPACE') {
