@@ -58,7 +58,7 @@ models/               classes of the game objects (world, character, chickens, e
 img/, audio/, fonts/  graphics, sounds and the font
 ```
 
-The classes build on each other: `DrawableObject` draws images on the canvas, `MoveableObject` adds movement, gravity and collisions, and `Character`, `Chicken`, `Endboss` and `ThrowableObject` extend it. `World` runs the game loop, checks collisions and draws everything.
+The classes build on each other: `DrawableObject` draws images on the canvas, `MovableObject` adds movement, gravity and collisions, and `Character`, `Chicken`, `Endboss` and `ThrowableObject` extend it. `World` runs the game loop, checks collisions and draws everything.
 
 ## Credits
 
